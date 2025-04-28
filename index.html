@@ -46,8 +46,6 @@
   <div id="resultat">La solution apparaîtra ici...</div>
 
   <script>
-    const apiKey = "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"; // <<< Mets ici ta clé OpenAI entre les guillemets
-
     async function resoudreProbleme() {
       const probleme = document.getElementById('probleme').value;
       const resultatDiv = document.getElementById('resultat');
@@ -60,28 +58,23 @@
       resultatDiv.innerText = "Calcul en cours...";
 
       try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: "gpt-4",
-            messages: [{ role: "user", content: "Résous ce problème mathématique : " + probleme }],
-            temperature: 0.2
-          })
-        });
-
+        const response = await fetch(`https://newton.vercel.app/api/v2/simplify/${encodeURIComponent(probleme)}`);
         const data = await response.json();
-        resultatDiv.innerText = data.choices[0].message.content.trim();
 
+        if (data.result) {
+          resultatDiv.innerText = `La solution est : ${data.result}`;
+        } else {
+          resultatDiv.innerText = "Désolé, je n'ai pas pu résoudre ce problème.";
+        }
       } catch (error) {
         console.error(error);
-        resultatDiv.innerText = "Erreur lors de la résolution. Vérifie ta clé API.";
+        resultatDiv.innerText = "Erreur lors de la résolution. Vérifie ta connexion.";
       }
     }
   </script>
+
+</body>
+</html>
 
 </body>
 </html>
