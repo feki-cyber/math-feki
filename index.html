@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -859,4 +858,18 @@
                 };
                 
                 const lowerQuestion = question.toLowerCase();
-                for (const [keyword, response] of Object.entries(mathKeywords))
+                for (const [keyword, response] of Object.entries(mathKeywords)) {
+                    if (lowerQuestion.includes(keyword)) {
+                        return response;
+                    }
+                }
+                
+                return "Je suis un assistant mathématique. Posez-moi des questions sur les équations, graphiques ou calculs. Par exemple :<br>" +
+                       "- Comment résoudre une équation quadratique ?<br>" +
+                       "- Qu'est-ce qu'une dérivée ?<br>" +
+                       "- Trace la fonction sin(x) / x";
+            }
+        });
+    </script>
+</body>
+</html>
