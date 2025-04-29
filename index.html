@@ -1,77 +1,290 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Résolveur Mathématique IA</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: #f5f5f5;
-      margin: 0;
-    }
-    h1 {
-      color: #333;
-    }
-    input, button {
-      margin-top: 10px;
-      padding: 10px;
-      font-size: 16px;
-      width: 300px;
-    }
-    #resultat {
-      margin-top: 20px;
-      padding: 20px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      width: 80%;
-      max-width: 600px;
-      min-height: 100px;
-    }
-  </style>
+    <title>Résolveur 1er/2nd Degré</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { display: flex; flex-wrap: wrap; gap: 20px; }
+        .panel { flex: 1; min-width: 300px; }
+        input, button { padding: 10px; margin: 5px 0; width: 100%; }
+        button { background: #4CAF50; color: white; border: none; cursor: pointer; }
+        #graph { width: 100%; height: 400px; }
+        .step { background: #f0f0f0; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .error { color: red; }
+        .toggle { display: flex; justify-content: center; margin: 15px 0; }
+        .toggle-btn { padding: 8px 15px; background: #ddd; border: none; cursor: pointer; }
+        .toggle-btn.active { background: #4CAF50; color: white; }
+    </style>
 </head>
 <body>
+    <h1>Résolveur d'Équations</h1>
+    
+    <div class="toggle">
+        <button class="toggle-btn active" onclick="setDegree(1)">1er Degré</button>
+        <button class="toggle-btn" onclick="setDegree(2)">2nd Degré</button>
+    </div>
 
-  <h1>Résolveur Mathématique par IA</h1>
+    <div class="container">
+        <div class="panel">
+            <h2 id="degree-title">Équation du 1er Degré</h2>
+            <input type="text" id="equation" placeholder="3x + 5 = 20">
+            <button onclick="solve()">Résoudre</button>
+            <div id="solution"></div>
+            <div id="steps"></div>
+        </div>
+        <div class="panel">
+            <h2>Représentation Graphique</h2>
+            <div id="graph"></div>
+        </div>
+    </div>
 
-  <input type="text" id="probleme" placeholder="Entrez votre problème mathématique (ex: 2x+5=11)">
-  <button onclick="resoudreProbleme()">Résoudre</button>
+    <script>
+        let currentDegree = 1;
+        let currentEquation = '';
 
-  <div id="resultat">La solution apparaîtra ici...</div>
-
-  <script>
-    async function resoudreProbleme() {
-      const probleme = document.getElementById('probleme').value;
-      const resultatDiv = document.getElementById('resultat');
-
-      if (!probleme) {
-        resultatDiv.innerText = "Merci d'entrer un problème.";
-        return;
-      }
-
-      resultatDiv.innerText = "Calcul en cours...";
-
-      try {
-        const response = await fetch(`https://newton.vercel.app/api/v2/solve/${encodeURIComponent(probleme)}`);
-        const data = await response.json();
-
-        if (data.result) {
-          resultatDiv.innerText = `La solution est : ${data.result}`;
-        } else {
-          resultatDiv.innerText = "Désolé, je n'ai pas pu résoudre ce problème.";
+        function setDegree(degree) {
+            currentDegree = degree;
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.textContent) === degree);
+            });
+            document.getElementById("degree-title").textContent = 
+                `Équation du ${degree}${degree === 1 ? 'er' : 'nd'} Degré`;
+            document.getElementById("equation").placeholder = 
+                degree === 1 ? "3x + 5 = 20" : "2x² - 5x + 3 = 0";
+            solve(); // Re-résout l'équation avec le nouveau degré
         }
-      } catch (error) {
-        console.error(error);
-        resultatDiv.innerText = "Erreur lors de la résolution. Vérifie ta connexion.";
-      }
-    }
-  </script>
+
+        function solve() {
+            const equation = document.getElementById("equation").value.trim();
+            currentEquation = equation;
+            
+            document.getElementById("solution").innerHTML = '';
+            document.getElementById("steps").innerHTML = '';
+            
+            if (!equation) {
+                document.getElementById("solution").innerHTML = 
+                    '<p class="error">Veuillez entrer une équation</p>';
+                return;
+            }
+
+            try {
+                if (currentDegree === 1) {
+                    solveLinear(equation);
+                } else {
+                    solveQuadratic(equation);
+                }
+            } catch (e) {
+                document.getElementById("solution").innerHTML = 
+                    `<p class="error">Erreur: ${e.message}</p>`;
+            }
+        }
+
+        function solveLinear(eq) {
+            addStep(`<strong>Équation linéaire</strong>: ${eq}`);
+            
+            // Normalisation
+            const parts = eq.split('=');
+            if (parts.length !== 2) throw new Error("Format invalide: utilisez un '='");
+            
+            const left = parts[0].trim();
+            const right = parts[1].trim();
+            
+            addStep(`Réorganisation: ${left} - (${right}) = 0`);
+            
+            // Parsing
+            const leftParsed = parseSide(left);
+            const rightParsed = parseSide(right);
+            
+            const a = leftParsed.a - rightParsed.a;
+            const b = rightParsed.b - leftParsed.b;
+            
+            addStep(`Forme standard: ${a}x + ${b} = 0`);
+            
+            if (a === 0) {
+                if (b === 0) {
+                    addStep("0 = 0 → L'équation a ∞ solutions");
+                    document.getElementById("solution").innerHTML = 
+                        "<p>Solution: <strong>∞ solutions (équation toujours vraie)</strong></p>";
+                } else {
+                    addStep(`${b} = 0 → Équation impossible`);
+                    document.getElementById("solution").innerHTML = 
+                        "<p>Solution: <strong>Aucune solution</strong></p>";
+                }
+                plotLinear(a, b, []);
+                return;
+            }
+            
+            const solution = b / a;
+            addStep(`Solution: x = ${b} / ${a} = ${solution}`);
+            document.getElementById("solution").innerHTML = 
+                `<p>Solution: <strong>x = ${solution}</strong></p>`;
+            
+            plotLinear(a, b, [solution]);
+        }
+
+        function solveQuadratic(eq) {
+            addStep(`<strong>Équation quadratique</strong>: ${eq}`);
+            
+            // Normalisation
+            const parts = eq.split('=');
+            if (parts.length !== 2) throw new Error("Format invalide: utilisez un '='");
+            
+            const left = parts[0].trim().replace(/\^2/g, '²');
+            const right = parts[1].trim();
+            
+            addStep(`Réorganisation: ${left} - (${right}) = 0`);
+            
+            // Parsing
+            const { a, b, c } = parseQuadratic(left + ' - (' + right + ')');
+            addStep(`Forme standard: ${a}x² + ${b}x + ${c} = 0`);
+            
+            const discriminant = b*b - 4*a*c;
+            addStep(`Discriminant Δ = b² - 4ac = ${b}² - 4×${a}×${c} = ${discriminant}`);
+            
+            if (discriminant < 0) {
+                const realPart = -b/(2*a);
+                const imagPart = Math.sqrt(-discriminant)/(2*a);
+                addStep("Δ < 0 → Solutions complexes conjuguées");
+                document.getElementById("solution").innerHTML = `
+                    <p>Solutions complexes:<br>
+                    <strong>x₁ = ${realPart.toFixed(2)} + ${imagPart.toFixed(2)}i</strong><br>
+                    <strong>x₂ = ${realPart.toFixed(2)} - ${imagPart.toFixed(2)}i</strong></p>`;
+                plotQuadratic(a, b, c, []);
+            } 
+            else if (discriminant === 0) {
+                const x = -b/(2*a);
+                addStep(`Δ = 0 → Solution double: x = -b/(2a) = ${x}`);
+                document.getElementById("solution").innerHTML = 
+                    `<p>Solution double: <strong>x = ${x}</strong></p>`;
+                plotQuadratic(a, b, c, [x]);
+            } 
+            else {
+                const x1 = (-b + Math.sqrt(discriminant))/(2*a);
+                const x2 = (-b - Math.sqrt(discriminant))/(2*a);
+                addStep(`Δ > 0 → Deux solutions réelles distinctes`);
+                addStep(`x₁ = (-b + √Δ)/(2a) = ${x1}`);
+                addStep(`x₂ = (-b - √Δ)/(2a) = ${x2}`);
+                document.getElementById("solution").innerHTML = `
+                    <p>Solutions réelles:<br>
+                    <strong>x₁ = ${x1.toFixed(2)}</strong><br>
+                    <strong>x₂ = ${x2.toFixed(2)}</strong></p>`;
+                plotQuadratic(a, b, c, [x1, x2]);
+            }
+        }
+
+        function parseSide(side) {
+            let a = 0, b = 0;
+            side = side.replace(/\s+/g, '')
+                      .replace(/([+-])/g, ' $1')
+                      .trim()
+                      .split(' ');
+            
+            for (let term of side) {
+                if (!term) continue;
+                if (term.includes('x')) {
+                    const coeff = term.replace('x', '');
+                    a += coeff === '+' ? 1 : coeff === '-' ? -1 : parseFloat(coeff);
+                } else {
+                    b += parseFloat(term);
+                }
+            }
+            return { a, b };
+        }
+
+        function parseQuadratic(expr) {
+            expr = expr.replace(/\s+/g, '')
+                      .replace(/²/g, '^2')
+                      .replace(/([+-])/g, ' $1')
+                      .trim();
+            
+            let a = 0, b = 0, c = 0;
+            const terms = expr.split(' ');
+            
+            for (let term of terms) {
+                if (!term) continue;
+                if (term.includes('x^2')) {
+                    const coeff = term.replace('x^2', '');
+                    a += coeff === '+' ? 1 : coeff === '-' ? -1 : parseFloat(coeff);
+                } else if (term.includes('x')) {
+                    const coeff = term.replace('x', '');
+                    b += coeff === '+' ? 1 : coeff === '-' ? -1 : parseFloat(coeff);
+                } else {
+                    c += parseFloat(term);
+                }
+            }
+            
+            return { a, b, c };
+        }
+
+        function plotLinear(a, b, solutions) {
+            const xValues = [];
+            const yValues = [];
+            
+            for (let x = -10; x <= 10; x += 0.1) {
+                xValues.push(x);
+                yValues.push(a*x + b);
+            }
+            
+            const trace = {
+                x: xValues,
+                y: yValues,
+                type: 'scatter',
+                name: `y = ${a}x + ${b}`
+            };
+            
+            const solutionMarkers = {
+                x: solutions,
+                y: solutions.map(x => a*x + b),
+                mode: 'markers',
+                marker: { size: 12, color: 'red' },
+                name: 'Solution(s)'
+            };
+            
+            Plotly.newPlot('graph', solutions.length ? [trace, solutionMarkers] : [trace], {
+                title: 'Représentation graphique',
+                xaxis: { title: 'x' },
+                yaxis: { title: 'y' }
+            });
+        }
+
+        function plotQuadratic(a, b, c, solutions) {
+            const xValues = [];
+            const yValues = [];
+            
+            for (let x = -10; x <= 10; x += 0.1) {
+                xValues.push(x);
+                yValues.push(a*x*x + b*x + c);
+            }
+            
+            const trace = {
+                x: xValues,
+                y: yValues,
+                type: 'scatter',
+                name: `y = ${a}x² + ${b}x + ${c}`
+            };
+            
+            const solutionMarkers = {
+                x: solutions,
+                y: solutions.map(x => a*x*x + b*x + c),
+                mode: 'markers',
+                marker: { size: 12, color: 'red' },
+                name: 'Solution(s)'
+            };
+            
+            Plotly.newPlot('graph', solutions.length ? [trace, solutionMarkers] : [trace], {
+                title: 'Représentation graphique',
+                xaxis: { title: 'x' },
+                yaxis: { title: 'y' }
+            });
+        }
+
+        function addStep(text) {
+            document.getElementById("steps").innerHTML += `<div class="step">${text}</div>`;
+        }
+    </script>
+</body>
+</html>
 
 </body>
 </html>
